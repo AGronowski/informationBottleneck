@@ -6,7 +6,7 @@ from tensorflow import keras
 import numpy as np
 import plotting
 
-#this is a test
+
 
 # Create a new neural network
 def create_model():
