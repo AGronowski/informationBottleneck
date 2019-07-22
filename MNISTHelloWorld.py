@@ -8,26 +8,35 @@ import plotting
 
 
 train = True
-epoch = 1
-hidden_layer_size = 10
-description = str(hidden_layer_size) + "-" + str(hidden_layer_size) + " with decay"
+epoch = 20
+hidden_layer_size = 32
+optimizer = 'adamDefault'
+decay = False
+description = str(hidden_layer_size) + "-" + str(hidden_layer_size) + optimizer + "decay: " + str(decay)
 
 # Create a new neural network
 def create_model():
+    initializer = 'he_uniform'
     model = keras.models.Sequential([
         # Input layer. Image is 28 x 28 pixels, so layer has 784 nodes
         keras.layers.Flatten(input_shape=(28, 28)),
         # 16 node hidden layer with reLu activation function
-        keras.layers.Dense(hidden_layer_size, activation=tf.nn.relu),
+        keras.layers.Dense(hidden_layer_size, activation=tf.nn.relu,kernel_initializer=initializer),
         # 16 node hidden layer with reLu activation function
-        keras.layers.Dense(hidden_layer_size, activation=tf.nn.relu),
+        keras.layers.Dense(hidden_layer_size, activation=tf.nn.relu,kernel_initializer=initializer),
         # 512 node hidden layer, no activation function (linear function, o(x) = x)
         # keras.layers.Dense(512, activation=None),
         # 10 node output layer with softmax activation function
-        keras.layers.Dense(10, activation=tf.nn.softmax)
+        keras.layers.Dense(10, activation=tf.nn.softmax,kernel_initializer=initializer)
     ])
 
-    adam = keras.optimizers.Adam(lr=0, beta_1=0.5, beta_2=0.999, epsilon=None, decay=0.0, amsgrad=False)
+    # Adam optimizer, lr set to 0 to indicate that it's not being used here; lr controlled by lr_sched callback
+    if optimizer == 'adamPaper':
+      adam = keras.optimizers.Adam(lr=0, beta_1=0.5, beta_2=0.999, epsilon=None, decay=0.0, amsgrad=False)
+    if optimizer == 'adamDefault':
+      adam = keras.optimizers.Adam(lr=0.001,beta_1=0.9,beta_2=0.999)
+    else:
+        raise Exception("invalid name for optimizer")
 
     batch_size = 100
     steps_per_batch = int(60000 / batch_size)
@@ -64,7 +73,7 @@ def history():
     val_acc = history_callback.history["val_acc"]
 
     # Graph history
-    plotting.plot_4_history(train_loss, train_acc, val_loss, val_acc)
+    plotting.plot_4_history(train_loss, train_acc, val_loss, val_acc,"testDescription")
 
     # History strings
     train_loss_string = "loss=" + str(train_loss)
@@ -137,10 +146,10 @@ test_images = test_images / 255.0
 # Create checkpoint callback
 checkpoint_path = "training_1/cp.ckpt"
 checkpoint_dir = os.path.dirname(checkpoint_path)
-cp_callback = tf.keras.callbacks.ModelCheckpoint(checkpoint_path,
-                                                 save_weights_only=True,
-                                                 verbose=1,
-                                                 period=100)  # Save every 100 epochs
+# cp_callback = tf.keras.callbacks.ModelCheckpoint(checkpoint_path,
+#                                                  save_weights_only=True,
+#                                                  verbose=1,
+#                                                  period=100)  # Save every 100 epochs
 
 # Create new model
 model = create_model()
@@ -149,24 +158,29 @@ model = create_model()
 train_labels_onehot = keras.utils.to_categorical(train_labels)
 test_labels_onehot = keras.utils.to_categorical(test_labels)
 
-
+# Callback adds learning rate decay every step_size epochs
 lr_sched = step_decay_schedule(initial_lr=1e-4, decay_factor=0.97, step_size=2)
 
+if decay:
+    callbacks = [lr_sched]
+else:
+    callbacks = None
 
 # Train model
 if train:
     history_callback = model.fit(train_images, train_labels, batch_size=100, epochs=epoch,
                                  validation_data=(test_images, test_labels),
-                                 callbacks=[cp_callback,lr_sched])  # Pass callback to training
+                                 callbacks=callbacks)  # Pass callback to training
     # Save entire model
     model.save('my_model.h5')
+    # Print loss and accuracy and save to text file
     history()
-
-
 
 # Load saved model
 model3 = keras.models.load_model('my_model.h5')
 
-model3.summary
+print(model3.summary)
+
+plotting.plot_images_with_prediction(model3,class_names,test_labels,test_images,4,4,True)
 # loss, acc = model3.evaluate(test_images, test_labels)
 # print("Restored model, accuracy: {:5.2f}%".format(100 * acc))
