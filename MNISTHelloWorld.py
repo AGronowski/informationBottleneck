@@ -7,16 +7,20 @@ import numpy as np
 import plotting
 
 
-train = True
-epoch = 20
+train = False
+epoch = 1
+# Network contains two hidden layers
 hidden_layer_size = 32
+# adamDefault- default Adam optimizer, adamPaper- Adam alpha=10e-4, B1=0.5, B2=0.999
 optimizer = 'adamDefault'
+# Initializers listed at https://keras.io/initializers/
+initializer = 'glorot_uniform'
 decay = False
-description = str(hidden_layer_size) + "-" + str(hidden_layer_size) + optimizer + "decay: " + str(decay)
+description =  str(hidden_layer_size) + "-" + str(hidden_layer_size) + ' ' + optimizer + " decay:" + str(decay) + " " + initializer
 
 # Create a new neural network
 def create_model():
-    initializer = 'he_uniform'
+
     model = keras.models.Sequential([
         # Input layer. Image is 28 x 28 pixels, so layer has 784 nodes
         keras.layers.Flatten(input_shape=(28, 28)),
@@ -39,7 +43,6 @@ def create_model():
         raise Exception("invalid name for optimizer")
 
     batch_size = 100
-    steps_per_batch = int(60000 / batch_size)
 
     # global_step = tf.contrib.framework.get_or_create_global_step()
     # learning_rate = tf.train.exponential_decay(learning_rate=1e-4, global_step=global_step,
@@ -64,6 +67,36 @@ def step_decay_schedule(initial_lr, decay_factor, step_size):
         return initial_lr * (decay_factor ** np.floor(epoch / step_size))
 
     return keras.callbacks.LearningRateScheduler(schedule)
+
+
+# Normalizes images to 0 mean and 1 variance
+def normalizeImages(train_images,train_labels,test_images,test_labels):
+
+    datagen = keras.preprocessing.image.ImageDataGenerator(featurewise_center=True, featurewise_std_normalization=True)
+
+    # Reshape to work with fit function
+    train_images = train_images.reshape(numMNIST, 28, 28, 1)
+    test_images = test_images.reshape(numTest, 28, 28, 1)
+
+    # Calculate mean and standard deviation on training and testing dataset
+    datagen.fit(train_images)
+
+    # Get iterators for training and test
+    test_iterator = datagen.flow(train_images, train_labels, shuffle=False, batch_size=numMNIST)
+    train_images, train_labels = test_iterator.next()
+
+    test_iterator = datagen.flow(test_images, test_labels, shuffle=False, batch_size=numTest)
+    test_images, test_labels = test_iterator.next()
+
+    # Reshape back to normal
+    train_images = train_images.reshape(numMNIST, 28, 28)
+    test_images = test_images.reshape(numTest, 28, 28)
+
+    print('mean %s' % train_images.mean())
+    print('std %s' % train_images.std())
+    print('mean %s' % test_images.mean())
+    print('std %s' % test_images.std())
+
 
 def history():
     # Get history
@@ -110,24 +143,24 @@ def history():
 
     # Save history, final accuracy, and  to text file
     file1 = open("full_history.txt", "a")
-    file1.write('\n' + description +'\n')
+    file1.write('\n# ' + description +'\n')
     file1.write(train_loss_string + '\n')
     file1.write(train_acc_string + '\n')
     file1.write(val_loss_string + '\n')
-    file1.write(val_acc_string + '\n')
-    file1.write(final_test_acc_string + '\n')
-    file1.write(final_val_acc_string + '\n')
-    file1.write(test_wrong_string + '\n')
-    file1.write(train_wrong_string + '\n')
+    file1.write(val_acc_string + '\n# ')
+    file1.write(final_test_acc_string + '\n# ')
+    file1.write(final_val_acc_string + '\n# ')
+    file1.write(test_wrong_string + '\n# ')
+    file1.write(train_wrong_string + '\n ')
     file1.close()
 
 
 # Import MNIST data
-fashion_mnist = keras.datasets.mnist
-(train_images, train_labels), (test_images, test_labels) = fashion_mnist.load_data()
+mnist = keras.datasets.mnist
+(train_images, train_labels), (test_images, test_labels) = mnist.load_data()
 
-class_names = ['T-shirt/top', 'Trouser', 'Pullover', 'Dress', 'Coat',
-               'Sandal', 'Shirt', 'Sneaker', 'Bag', 'Ankle boot']
+# class_names = ['T-shirt/top', 'Trouser', 'Pullover', 'Dress', 'Coat',
+#                'Sandal', 'Shirt', 'Sneaker', 'Bag', 'Ankle boot']
 
 class_names = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
 
@@ -139,9 +172,13 @@ test_images = test_images[:numTest]
 train_labels = train_labels[:numMNIST]
 test_labels = test_labels[:numTest]
 
+
 # Scale images to have values between 0 and 1
 train_images = train_images / 255.0
 test_images = test_images / 255.0
+
+
+
 
 # Create checkpoint callback
 checkpoint_path = "training_1/cp.ckpt"
@@ -177,10 +214,14 @@ if train:
     history()
 
 # Load saved model
-model3 = keras.models.load_model('my_model.h5')
+# model3 = keras.models.load_model('my_model.h5')
+#
+# print(model3.summary())
 
-print(model3.summary)
+#predictions = model3.predict(train_images)
 
-plotting.plot_images_with_prediction(model3,class_names,test_labels,test_images,4,4,True)
+
+
+#plotting.plot_with_ground_truth(model3,class_names,train_images,train_labels,1)
 # loss, acc = model3.evaluate(test_images, test_labels)
 # print("Restored model, accuracy: {:5.2f}%".format(100 * acc))

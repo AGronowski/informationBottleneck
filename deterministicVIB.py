@@ -1,10 +1,10 @@
 # Variational Informational Bottleneck from Alemi (2017)
 # Original code by authors of paper at https://github.com/alexalemi/vib_demo
 # Here comments have been added and things rewritten to improve readability
-
+# Mean of distribution is used
 
 import tensorflow as tf
-import  visualization
+
 
 tf.reset_default_graph()
 
@@ -50,25 +50,26 @@ def encoder(images):
     second_hidden_layer = layers.relu(first_hidden_layer, 1024)
     # Connect the output layer to second hidden layer (no activation fn)
     # Linear activation function is just identity function
-    output_layer = layers.linear(second_hidden_layer, 6)
+    output_layer = layers.linear(second_hidden_layer, 512)
 
     # mu used as mean, first 256 nodes
     # rho used as standard deviation, last 256 nodes
     # rank 2 tensor (matrix) 256 columns
-    mu, rho = output_layer[:, :2], output_layer[:, 4:]
+    mu, rho = output_layer[:, :256], output_layer[:, 256:]
+
 
     # Normal distribution: mean mu,
     # standard deviationL softplus(rho - 5)
-    encoding = ds.NormalWithSoftplusScale(mu, rho - 5.0)
 
 
+    # encoding = ds.NormalWithSoftplusScale(mu, rho - 5.0)
 
+    encoding = output_layer[:, :256]
     return encoding
 
 
 def decoder(encoding_sample):
     # linear activation function
-    # Outputs the unnormalized logits
     net = layers.linear(encoding_sample, 10)
     return net
 
@@ -79,31 +80,20 @@ prior = ds.Normal(0.0, 1.0)
 import math
 
 with tf.variable_scope('encoder'):
-
     encoding = encoder(images)
-    # Get 1 random sample
-    sample = encoding.sample()
 
-# Output of decoder
-# Logits are unnormalized predictions that need to be fed into a softmax layer
-# Tensor of rank 2, (10000,2)
+
 with tf.variable_scope('decoder'):
-    logits = decoder(sample)
+    logits = decoder(encoding)
 
-# 12 samples from the encoder are fed into the 10 node softmax layer
-# many_logits actually does refer to the logits
-# many_logits is a tensor of rank 3,(12,10000,10)
-with tf.variable_scope('decoder', reuse=True):
-    # Tensor (12,10000,256)
-    # 12 samples taken from encoder
-    many_encodings = encoding.sample(12)
-    many_logits = decoder(many_encodings)
+# with tf.variable_scope('decoder', reuse=True):
+#     many_logits = decoder(encoding.sample(12))
 
 # passes logits into softmax function and then funds cross entropy with one hot encoded labels
 class_loss = tf.losses.softmax_cross_entropy(
     logits=logits, onehot_labels=one_hot_labels) / math.log(2)
 
-BETA = 10**-(3)
+BETA = 0
 
 # tf.reduce_mean finds the mean
 # tf.reduce_sum(x,0) finds sum of rows
@@ -115,11 +105,8 @@ info_loss = tf.reduce_sum(tf.reduce_mean(
 
 total_loss = class_loss + BETA * info_loss
 
-# tf.equal() Returns True if output from network (logits) is equal to label, False otherwise
-# Logits are not fed into softmax and are still unnormalized here, but that does not matter for making predictions,
-# since the prediction is simply the argmax
-# Argmax returns index of highest entry along axis 1 of the (10000,10) logits tensor
-# correct_prediction is rank 1 tensor (10000)
+# Returns True if output from network (logits) is equal to label, False otherwise
+# Argmax returns index of highest entry along axis 1 of the logits tensor
 correct_prediction = tf.equal(
     tf.argmax(logits, 1), labels)
 
@@ -127,23 +114,14 @@ correct_prediction = tf.equal(
 correct_prediction = tf.cast(correct_prediction, tf.float32)
 
 # Mean of the correct_predictions array is the percentage of correct predictions
-# This is a scalar
 accuracy = tf.reduce_mean(correct_prediction)
 
-# Calculate average accuracy using 12 samples from the encoder
-# Feed logits into softmax
-network_output = tf.nn.softmax(many_logits)
-
-# Get average of the 12 samples: (12,10000,10) tensor becomes (10000,10) tensor
-average_output = tf.reduce_mean(network_output,0)
-
-# Get argmax of the 10 nodes, then output True if it matches label, False otherwise
-# This now becomes a rank 1 tensor (10000)
-correct_predictions_2 = tf.equal(
-    tf.argmax(average_output, 1), labels)
-
-# Mean is the number of correct predictions
-avg_accuracy = tf.reduce_mean(tf.cast(correct_predictions_2, tf.float32))
+# # Calculate average accuracy using Monte Carlo average of 12 samples from the encoder
+# correct_predictions_2 = tf.equal(
+#     tf.argmax(tf.reduce_mean(tf.nn.softmax(many_logits), 0), 1), labels)
+#
+# # Mean is the number of correct predictions
+# avg_accuracy = tf.reduce_mean(tf.cast(correct_predictions_2, tf.float32))
 
 # Bound of mutual information of Z and Y
 IZY_bound = math.log(10, 2) - class_loss
@@ -190,18 +168,22 @@ train_tensor = tf.contrib.training.create_train_op(total_loss, opt,
 tf.global_variables_initializer().run()
 
 
+enc, cp, IZY, IZX, acc = sess.run([encoding.sample(),correct_prediction, IZY_bound, IZX_bound, accuracy],
+                                      feed_dict={images: mnist_data.test.images, labels: mnist_data.test.labels})
+print(enc)
+
 # Evaluate performance of the network on the 10,000 images testing set
 # Accuracy uses the stochastic encoder with one sample
 # Average accuracy uses a Monte Carlo average of 12 samples from the encoder
 def evaluate():
-    cp, IZY, IZX, acc, avg_acc = sess.run([correct_prediction,IZY_bound, IZX_bound, accuracy, avg_accuracy],
+    cp, IZY, IZX, acc = sess.run([correct_prediction,IZY_bound, IZX_bound, accuracy],
                                       feed_dict={images: mnist_data.test.images, labels: mnist_data.test.labels})
 
     return IZY, IZX, acc, avg_acc, 1 - acc, 1 - avg_acc
 
 # Same as previous evaluate function expect with train images instead of test images
 def evaluate2():
-    IZY, IZX, acc, avg_acc = sess.run([IZY_bound, IZX_bound, accuracy, avg_accuracy],
+    IZY, IZX, acc, avg_acc = sess.run([IZY_bound, IZX_bound, accuracy],
                                       feed_dict={images: mnist_data.train.images, labels: mnist_data.train.labels})
     return IZY, IZX, acc, avg_acc, 1 - acc, 1 - avg_acc
 
@@ -224,7 +206,18 @@ avg_acc_array2= []
 error_array2 = []
 avg_error_array2 = []
 
-def print_save_history():
+# Train for 200 epochs
+for epoch in range(0):
+
+    # Train each minibatch
+    # Number of minibatches is total train images (60000) / minibatch size (100) = 600
+    for step in range(steps_per_batch):
+        # Get next 600 images and labels from training set
+        im, ls = mnist_data.train.next_batch(batch_size)
+        # Feed them into the train tensor
+        sess.run(train_tensor, feed_dict={images: im, labels: ls})
+
+
     # Keep track of information bounds, accuracy and error
     IZY, IZX, acc, avg_acc, error, avg_error = evaluate()
     IZY_array.append(IZY)
@@ -243,69 +236,43 @@ def print_save_history():
     avg_error_array2.append(avg_error2)
 
 
-    # Print after every epoch
-    # Testing set
-    print("{}: IZY={:.2f}\tIZX={:.2f}\tacc={:.4f}\tavg_acc={:.4f}\terr={:.4f}\tavg_err={:.4f}".format(
-        epoch, *(IZY, IZX, acc, avg_acc, error, avg_error)))
 
-    # Training set
-    print("{}: IZY={:.2f}\tIZX={:.2f}\tacc={:.4f}\tavg_acc={:.4f}\terr={:.4f}\tavg_err={:.4f}".format(
-        epoch, *(IZY2, IZX2, acc2, avg_acc2, error2, avg_error2) ))
+    # # Print after every epoch
+    # # Testing set
+    # print("{}: IZY={:.2f}\tIZX={:.2f}\tacc={:.4f}\tavg_acc={:.4f}\terr={:.4f}\tavg_err={:.4f}".format(
+    #     epoch, *(IZY, IZX, acc, avg_acc, error, avg_error) ))
+    #
+    # # Training set
+    # print("{}: IZY={:.2f}\tIZX={:.2f}\tacc={:.4f}\tavg_acc={:.4f}\terr={:.4f}\tavg_err={:.4f}".format(
+    #     epoch, *(IZY2, IZX2, acc2, avg_acc2, error2, avg_error2) ))
 
-
-# Train for 200 epochs
-for epoch in range(0):
-
-    # Train each minibatch
-    # Number of minibatches is total train images (60000) / minibatch size (100) = 600
-    for step in range(steps_per_batch):
-        # Get next 600 images and labels from training set
-        im, ls = mnist_data.train.next_batch(batch_size)
-        # Feed them into the train tensor
-        sess.run(train_tensor, feed_dict={images: im, labels: ls})
-
-
-    print_save_history()
-    print("epoch " +  str(epoch))
     sys.stdout.flush()
 
-# Save trained network
 savepth = saver.save(sess, '/tmp/mnistvib', global_step)
 
-# Restore saved network
-saver_polyak.restore(sess, savepth)
-print(evaluate())
 
+saver_polyak.restore(sess, savepth)
+#print(evaluate())
+#
 saver.restore(sess, savepth)
-print(evaluate())
+# print(evaluate())
 
 # Save history to text file
-def write_to_text():
-    file1 = open("alemiExampleHistory.txt", "a")
-    file1.write('\nBeta ' + str(BETA) + '\n')
-    file1.write(str(IZY_array) + '\n')
-    file1.write(str(IZX_array) + '\n')
-    file1.write(str(acc_array) + '\n')
-    file1.write(str(avg_acc_array) + '\n')
-    file1.write(str(error_array) + '\n')
-    file1.write(str(avg_error_array) + '\n')
-    file1.write('training set\n')
-    file1.write(str(IZY_array2) + '\n')
-    file1.write(str(IZX_array2) + '\n')
-    file1.write(str(acc_array2) + '\n')
-    file1.write(str(avg_acc_array2) + '\n')
-    file1.write(str(error_array2) + '\n')
-    file1.write(str(avg_error_array2) + '\n')
-
-    file1.close()
+file1 = open("alemiExampleHistory.txt", "a")
+file1.write('\nBeta ' + str(BETA) + '\n')
+file1.write(str(IZY_array) + '\n')
+file1.write(str(IZX_array) + '\n')
+file1.write(str(acc_array) + '\n')
+file1.write(str(avg_acc_array) + '\n')
+file1.write(str(error_array) + '\n')
+file1.write(str(avg_error_array) + '\n')
+file1.write('training set\n')
+file1.write(str(IZY_array2) + '\n')
+file1.write(str(IZX_array2) + '\n')
+file1.write(str(acc_array2) + '\n')
+file1.write(str(avg_acc_array2) + '\n')
+file1.write(str(error_array2) + '\n')
+file1.write(str(avg_error_array2) + '\n')
 
 
-# Get sample data to be visualized
-data,lab, cp, IZY, IZX, acc, avg_acc = sess.run([sample,labels, correct_prediction, IZY_bound, IZX_bound, accuracy, avg_accuracy],
-                                      feed_dict={images: mnist_data.test.images, labels: mnist_data.test.labels})
-
-visualization.plot_visualizations(data,lab)
-# Save sample data and labels to file
-
-# np.save('data',data)
-# np.save('labels',lab)
+file1.close()
