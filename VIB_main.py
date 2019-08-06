@@ -1,10 +1,10 @@
 # Variational Informational Bottleneck from Alemi (2017)
 # Original code by authors of paper at https://github.com/alexalemi/vib_demo
 # Here comments have been added and things rewritten to improve readability
-
+# This code is for the Higher Dimensional Embedding section of the paper
 
 import tensorflow as tf
-import  visualization
+import  plotting
 
 tf.reset_default_graph()
 
@@ -224,6 +224,7 @@ avg_acc_array2= []
 error_array2 = []
 avg_error_array2 = []
 
+# Print accuracy, error, information bounds, and save to text file after every epoch
 def print_save_history():
     # Keep track of information bounds, accuracy and error
     IZY, IZX, acc, avg_acc, error, avg_error = evaluate()
@@ -264,7 +265,7 @@ for epoch in range(0):
         # Feed them into the train tensor
         sess.run(train_tensor, feed_dict={images: im, labels: ls})
 
-
+    # Print and save accuracy, error, and information bounds to text file after every epoch
     print_save_history()
     print("epoch " +  str(epoch))
     sys.stdout.flush()
@@ -304,7 +305,9 @@ def write_to_text():
 data,lab, cp, IZY, IZX, acc, avg_acc = sess.run([sample,labels, correct_prediction, IZY_bound, IZX_bound, accuracy, avg_accuracy],
                                       feed_dict={images: mnist_data.test.images, labels: mnist_data.test.labels})
 
-visualization.plot_visualizations(data,lab)
+
+plotting.plot_visualizations(data,lab)
+
 # Save sample data and labels to file
 
 # np.save('data',data)

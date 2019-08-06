@@ -1,4 +1,4 @@
-# Baseline of the Alemi (2017) paper
+# Recreates Baseline of the Alemi (2017) paper
 # Baseline is a 784-1024-1024-10 neural network trained on the full 60,000 image MNIST database
 # Training over 200 epochs with Adam optimizer
 # Optimizer parameters, exponential decay, and Polyak averaging used, as described in paper
