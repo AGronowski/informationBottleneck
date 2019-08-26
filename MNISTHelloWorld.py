@@ -12,10 +12,10 @@ import numpy as np
 import plotting
 
 
-train = False
-epoch = 1
+train = True
+epoch = 30
 # Network contains two hidden layers
-hidden_layer_size = 32
+hidden_layer_size = 1024
 # adamDefault- default Adam optimizer, adamPaper- Adam alpha=10e-4, B1=0.5, B2=0.999
 optimizer = 'adamDefault'
 # Initializers listed at https://keras.io/initializers/
@@ -27,10 +27,18 @@ description =  str(hidden_layer_size) + "-" + str(hidden_layer_size) + ' ' + opt
 def create_model():
 
     model = keras.models.Sequential([
+        #keras.layers.Dropout(0.2),
         # Input layer. Image is 28 x 28 pixels, so layer has 784 nodes
+        #keras.layers.Dropout(0.2),
         keras.layers.Flatten(input_shape=(28, 28)),
+
+        #keras.layers.Dropout(0.5),
+
         # 16 node hidden layer with reLu activation function
         keras.layers.Dense(hidden_layer_size, activation=tf.nn.relu,kernel_initializer=initializer),
+
+        #keras.layers.Dropout(0.5),
+
         # 16 node hidden layer with reLu activation function
         keras.layers.Dense(hidden_layer_size, activation=tf.nn.relu,kernel_initializer=initializer),
         # 512 node hidden layer, no activation function (linear function, o(x) = x)
@@ -38,6 +46,8 @@ def create_model():
         # 10 node output layer with softmax activation function
         keras.layers.Dense(10, activation=tf.nn.softmax,kernel_initializer=initializer)
     ])
+
+
 
     # Adam optimizer, lr set to 0 to indicate that it's not being used here; lr controlled by lr_sched callback
     if optimizer == 'adamPaper':
@@ -214,18 +224,19 @@ if train:
                                  validation_data=(test_images, test_labels),
                                  callbacks=callbacks)  # Pass callback to training
     # Save entire model
-    model.save('my_model.h5')
+    model.save('kerasBaseline1024')
     # Print loss and accuracy and save to text file
     history()
 
 # Load saved model
-# model3 = keras.models.load_model('my_model.h5')
+#model3 = keras.models.load_model('AkerasBaseline1024')
 #
 # print(model3.summary())
 
 #predictions = model3.predict(train_images)
 
 
+#model = keras.models.load_model('kerasBaseline1024')
 
 #plotting.plot_with_ground_truth(model3,class_names,train_images,train_labels,1)
 # loss, acc = model3.evaluate(test_images, test_labels)

@@ -2,15 +2,21 @@ from tensorflow import keras
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
+import seaborn as sns
+import pandas as pd
 
 # Various helper functions used to generate plots
 
 
 # Plot incorrect images
 # Setting incorrecOnly to True plots only wrong predictions
-def plot_images_with_prediction(model, class_names, images, labels,  row, column, incorrect_only=False):
+def plot_images_with_prediction(predictions_array, images, labels,  row, column, class_names = None, incorrect_only=False):
+    if not class_names:
+        class_names = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
+
+
     # Get predictions
-    predictions_array = model.predict(images)
+    #predictions_array = model.predict(images)
 
     # Plot grid of images
     num_row = row
@@ -34,6 +40,27 @@ def plot_images_with_prediction(model, class_names, images, labels,  row, column
             plot_value_array(j, predictions_array, labels, "Predicted Label")
             j += 1
     plt.show()
+
+def plot_images_only(predictions_array, images, labels,  num_row, num_column, class_names = None):
+    if not class_names:
+        class_names = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
+
+    # Plot grid of images
+
+    num_plotted_images = num_row * num_column
+    plt.figure(figsize=(2 * num_column, 2 * num_row))
+
+    num_total_images = len(labels)
+
+    # Plot incorrect predictions with error bar
+    for i in range(num_row):
+        for j in range(num_column):
+            if (i * num_column + j) < num_total_images:
+                plt.subplot(num_row, num_column, i * num_column + j + 1)
+                plot_image(i * num_column + j, predictions_array, labels, images,class_names)
+
+    plt.show()
+
 
 # Plot only predictions graph
 def plot_prediction_only(model, class_names, images, labels,  row, column, incorrect_only=False):
@@ -90,13 +117,15 @@ def get_num_100_predictions(predictions_array):
 
 
 # Plot image with labels
-def plot_image(i, predictions_array, true_label, img, class_names):
+def plot_image(i, predictions_array, true_label, img, class_names=None):
+    if not class_names:
+        class_names = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
     predictions_array, true_label, img = predictions_array[i], true_label[i], img[i]
     plt.grid(False)
     plt.xticks([])
     plt.yticks([])
 
-    plt.imshow(img, cmap=plt.cm.binary)
+    plt.imshow(img, cmap=plt.cm.binary_r)
 
     predicted_label = np.argmax(predictions_array)
     if predicted_label == true_label:
@@ -104,8 +133,11 @@ def plot_image(i, predictions_array, true_label, img, class_names):
     else:
         color = 'red'
 
-    plt.xlabel("Image# {} \n Predicted {} ({}) \n {:2.1f}% confidence".format(i,class_names[predicted_label], class_names[true_label],
-                                                                 100 * np.max(predictions_array)),
+    # plt.xlabel("Image# {} \n Predicted {} ({}) \n {:2.1f}% confidence".format(i,class_names[predicted_label], class_names[true_label],
+    #                                                              100 * np.max(predictions_array)),
+    #            color=color)
+
+    plt.xlabel("Target {} \n Predicted {}".format(class_names[true_label],class_names[predicted_label]),
                color=color)
 
 # Plot image with nothing else
@@ -134,7 +166,11 @@ def plot_value_array(i, predictions_array, true_label, title=''):
 
 
 # Plot prediction distribution with ground truth distribution
-def plot_with_ground_truth(model, class_names, images, labels, num_images_to_plot):
+def plot_with_ground_truth(model, images, labels, num_images_to_plot,class_names=None):
+
+    if not class_names:
+        class_names = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
+
     # Get one-hot encodings
     one_hot_encodings = keras.utils.to_categorical(labels)
 
@@ -331,8 +367,6 @@ def plot_visualizations(data,labels):
     # Add labels to data array for a (# of labels, 3) array
     data = np.concatenate((data,labels),axis=1)
 
-    #sns.set(rc={'figure.figsize': (15, 8.27)})
-
     # Create the pandas DataFrame
     df = pd.DataFrame(data, columns = ['Dim1', 'Dim2','label'])
 
@@ -345,15 +379,12 @@ def plot_visualizations(data,labels):
     # plt.legend(loc='best')
     plt.legend(loc='center left', bbox_to_anchor=(1, 0.5), ncol=1,labels=new_labels)
 
-    #plt.title(r'$\beta = 10^{-3}$', weight='bold').set_fontsize('14')
+    plt.title(r'$\beta = 10^{-0.5}$', weight='bold').set_fontsize('14')
     plt.xlabel('Dimension 1', weight='bold').set_fontsize('10')
     plt.ylabel('Dimension 2', weight='bold').set_fontsize('10')
     plt.show()
 
 
-data = np.load('data.npy')
-labels = np.load('labels.npy')
-plot_visualizations(data,labels)
 
 
 # # singleSample = [1.47,1.4,1.46,1.37,1.43,1.5,1.64,1.75,2.1,1.55,3.91,9.14,24.20,85.48]

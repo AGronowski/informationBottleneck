@@ -4,7 +4,8 @@
 # This code is for the Higher Dimensional Embedding section of the paper
 
 import tensorflow as tf
-import  plotting
+import numpy as np
+import plotting
 
 tf.reset_default_graph()
 
@@ -61,8 +62,6 @@ def encoder(images):
     # standard deviationL softplus(rho - 5)
     encoding = ds.NormalWithSoftplusScale(mu, rho - 5.0)
 
-
-
     return encoding
 
 
@@ -103,8 +102,7 @@ with tf.variable_scope('decoder', reuse=True):
 class_loss = tf.losses.softmax_cross_entropy(
     logits=logits, onehot_labels=one_hot_labels) / math.log(2)
 
-BETA = 10**-(3)
-
+BETA = 10**(-0.5)
 # tf.reduce_mean finds the mean
 # tf.reduce_sum(x,0) finds sum of rows
 # KL divergence between encoding and standard normal prior
@@ -255,7 +253,7 @@ def print_save_history():
 
 
 # Train for 200 epochs
-for epoch in range(0):
+for epoch in range(200):
 
     # Train each minibatch
     # Number of minibatches is total train images (60000) / minibatch size (100) = 600
@@ -310,5 +308,5 @@ plotting.plot_visualizations(data,lab)
 
 # Save sample data and labels to file
 
-# np.save('data',data)
-# np.save('labels',lab)
+np.save('data3point5',data)
+np.save('labels3point5',lab)
