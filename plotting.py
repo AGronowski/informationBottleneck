@@ -138,7 +138,11 @@ def plot_image(i, predictions_array, true_label, img, class_names=None):
     #            color=color)
 
     plt.xlabel("Target {} \n Predicted {}".format(class_names[true_label],class_names[predicted_label]),
-               color=color)
+              color=color)
+
+
+    # plt.xlabel(" \n ",color=color)
+
 
 # Plot image with nothing else
 def plot_simple_image(image_array,i):

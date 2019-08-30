@@ -32,12 +32,12 @@ def create_model():
         #keras.layers.Dropout(0.2),
         keras.layers.Flatten(input_shape=(28, 28)),
 
-        #keras.layers.Dropout(0.5),
+        keras.layers.Dropout(0.5),
 
         # 16 node hidden layer with reLu activation function
         keras.layers.Dense(hidden_layer_size, activation=tf.nn.relu,kernel_initializer=initializer),
 
-        #keras.layers.Dropout(0.5),
+        keras.layers.Dropout(0.5),
 
         # 16 node hidden layer with reLu activation function
         keras.layers.Dense(hidden_layer_size, activation=tf.nn.relu,kernel_initializer=initializer),
@@ -224,7 +224,7 @@ if train:
                                  validation_data=(test_images, test_labels),
                                  callbacks=callbacks)  # Pass callback to training
     # Save entire model
-    model.save('kerasBaseline1024')
+    model.save('CkerasDropout1024')
     # Print loss and accuracy and save to text file
     history()
 
