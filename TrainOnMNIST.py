@@ -1,7 +1,8 @@
 # Code for training a neural network with 2 hidden layers on MNIST
 # Can be used to recreate 784-1024-1024-10 baseline from Alemi's paper
 # This program uses Keras so is easier to use than Alemi's original code
-
+# Written by Adam Gronowski, Summer 2019
+# Parts based off of tutorials at https://www.tensorflow.org/tutorials/
 
 from __future__ import absolute_import, division, print_function, unicode_literals
 
