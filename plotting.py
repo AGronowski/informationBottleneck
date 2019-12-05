@@ -6,6 +6,7 @@ import seaborn as sns
 import pandas as pd
 
 # Various helper functions used to generate plots
+# Written by Adam Gronowski, Summer 2019
 
 
 # Plot incorrect images
